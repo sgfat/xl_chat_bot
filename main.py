@@ -66,7 +66,7 @@ def main() -> None:
     logger.debug('Bot started')
 
     loop = asyncio.get_event_loop()
-    loop.run_until_complete(send_startup_message(application))
+    # loop.run_until_complete(send_startup_message(application))
 
     application.run_polling()
 

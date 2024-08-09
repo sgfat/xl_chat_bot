@@ -32,9 +32,9 @@ async def random_movie_link(update, context, type_m):
                                              data['videos']['trailers'])
                 else:
                     trailer_urls = None
-                await context.bot.send_messsage(
+                # await context.bot.send_messsage(
+                await update.message.reply_photo(
                     chat_id=update.effective_chat.id,
-                # await update.message.reply_photo(
                     photo=open(poster_path, 'rb'),
                     caption=f'{genre_mapping[data["typeNumber"]]}: '
                             f'{data["name"]} ({data["year"]}, '
