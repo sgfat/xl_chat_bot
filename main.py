@@ -65,7 +65,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
     logger.debug('Bot started')
 
-    loop = asyncio.get_event_loop()
+    # loop = asyncio.get_event_loop()
     # loop.run_until_complete(send_startup_message(application))
 
     application.run_polling()

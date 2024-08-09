@@ -20,21 +20,23 @@ async def random_movie_link(update, context, type_m):
     try:
         async with ClientSession() as session:
             headers = {'X-API-KEY': X_API_KEY}
-            url = f'{X_API_URL}movie/random?rating.kp=7-10&type={type_m}'
+            url = f'{X_API_URL}{type_m}'
+            logger.debug('1')
             async with session.get(url, headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
                 description = data['description']
                 poster = data['poster']['url']
                 poster_path = await download_poster(poster)
-                if data['videos'] and data['videos']['trailers']:
-                    trailer_urls = '\n'.join(x['url'] for x in
-                                             data['videos']['trailers'])
+                videos = data.get('videos', {})
+                trailers = videos.get('trailers', [])
+                if trailers:
+                    trailer_urls = '\n'.join(x.get('url', '')
+                                             for x in trailers if x.get('url'))
                 else:
                     trailer_urls = None
-                # await context.bot.send_messsage(
+                logger.debug('2')
                 await update.message.reply_photo(
-                    chat_id=update.effective_chat.id,
                     photo=open(poster_path, 'rb'),
                     caption=f'{genre_mapping[data["typeNumber"]]}: '
                             f'{data["name"]} ({data["year"]}, '
@@ -43,8 +45,7 @@ async def random_movie_link(update, context, type_m):
                             f'КП: {data["rating"]["kp"]} '
                             f'IMDB: {data["rating"]["imdb"]}\n\n'
                             f'{"Нет описания" if description is None else description}\n\n'
-                    # f'Трейлеры:\n{"Нет трейлеров" if trailer_urls is None else trailer_urls}'
-                    # f'{", ".join(x["url"] for x in data["videos"]["trailers"])}'
+                            f'Трейлеры:\n{"Нет трейлеров" if trailer_urls is None else trailer_urls}'
                 )
 
                 logger.debug('Random movie link created')
