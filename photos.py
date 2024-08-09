@@ -105,7 +105,7 @@ def parse_photos_links() -> set:
     for a in soup.find_all('a', href=True):
         if 'href-mobile' in a.attrs:
             urls.add(a['href-mobile'])
-            if len(urls) == 3:
+            if len(urls) == 10:
                 break
     logger.debug('Links parsed')
     return urls
