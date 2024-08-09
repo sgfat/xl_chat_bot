@@ -14,6 +14,7 @@ load_dotenv()
 
 TOKEN = os.getenv('TOKEN')
 
+
 # TODO Change check_tokens function
 def check_tokens() -> bool:
     """Checking tokens."""

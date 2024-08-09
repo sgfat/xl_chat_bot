@@ -80,7 +80,7 @@ async def send_files(bot: Bot, urls: list) -> set:
         media.append(InputMediaPhoto(open(file_path, 'rb')))
     if media:
         await bot.send_media_group(chat_id=CHAT_ID,
-                                   # message_thread_id=PHOTO_THREAD_ID,
+                                   message_thread_id=PHOTO_THREAD_ID,
                                    media=media)
     return set(urls)
 
@@ -113,6 +113,7 @@ def parse_photos_links() -> set:
 
 # TODO Add checking already running function
 # TODO Add exceptions
+# TODO Add shutdown function for asyncio.sleep
 async def check_photos(update: Update,
                        context: ContextTypes.DEFAULT_TYPE) -> None:
     """Main auto check new photos repeating function."""
@@ -120,13 +121,9 @@ async def check_photos(update: Update,
     while True:
         try:
             last_run_time = load_last_run_time()
-            if (last_run_time and
+            if (last_run_time is None or
                     datetime.now() - last_run_time > timedelta(hours=24)):
-                # new_links = parse_photos_links()
-                new_links = [
-                    'https://parsinger.ru/legal/img/1/1/1_1.jpg', 'https://parsinger.ru/legal/img/1/1/1_2.jpg',
-                    'https://parsinger.ru/legal/img/1/1/1_3.jpg', 'https://parsinger.ru/legal/img/1/1/1_4.jpg'
-                ]
+                new_links = parse_photos_links()
                 known_links = load_links()
                 new_links = set(new_links) - known_links
                 if new_links:
