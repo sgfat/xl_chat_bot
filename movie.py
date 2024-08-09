@@ -36,9 +36,7 @@ async def random_movie_link(update, context, type_m):
                 else:
                     trailer_urls = None
                 logger.debug('2')
-                # await update.message.reply_photo(
-                await context.bot.send_message(
-                    chat_id=update.effective_chat.id,
+                await update.message.reply_photo(
                     photo=open(poster_path, 'rb'),
                     caption=f'{genre_mapping[data["typeNumber"]]}: '
                             f'{data["name"]} ({data["year"]}, '
@@ -52,7 +50,8 @@ async def random_movie_link(update, context, type_m):
 
                 logger.debug('Random movie link created')
     except Exception as e:
-        print(f"An error occurred: {e}")
+        print(f'An error occurred: {e}')
+        logger.debug(f'An error occurred: {e}')
     finally:
         if 'poster_path' in locals():
             os.remove(poster_path)
