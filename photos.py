@@ -87,7 +87,7 @@ async def send_files(bot: Bot, urls: list) -> set:
         media.append(InputMediaPhoto(open(file_path, 'rb')))
     if media:
         await bot.send_media_group(chat_id=CHAT_ID,
-                                   # message_thread_id=PHOTO_THREAD_ID,
+                                   message_thread_id=PHOTO_THREAD_ID,
                                    media=media)
     return set(urls)
 
