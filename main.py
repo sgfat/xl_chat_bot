@@ -1,4 +1,3 @@
-import asyncio
 import os
 import sys
 from asyncio import new_event_loop, set_event_loop
