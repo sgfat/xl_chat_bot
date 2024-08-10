@@ -3,14 +3,13 @@ import json
 import asyncio
 from datetime import datetime, timedelta
 
-import aiohttp
-import requests
+from aiohttp import ClientTimeout, ClientSession
 from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from telegram import Bot, InputMediaPhoto, Update
-from telegram.ext import ContextTypes
+from requests import Session
+from telegram import Bot, InputMediaPhoto
 
-from config import PHOTO_RETRY_PERIOD, logger
+from config import logger
 
 load_dotenv()
 
@@ -19,6 +18,7 @@ LINKS_FILE = os.getenv('LINKS_FILE')
 TIMESTAMP_FILE = os.getenv('TIMESTAMP_FILE')
 TEMP_FOLDER = os.getenv('TEMP_FOLDER')
 PHOTO_THREAD_ID = os.getenv('PHOTO_THREAD_ID')
+SESSION_TIMEOUT = ClientTimeout(total=60)
 
 if not os.path.exists(TEMP_FOLDER):
     os.makedirs(TEMP_FOLDER)
@@ -46,8 +46,7 @@ def load_last_run_time() -> datetime | None:
     logger.debug('Loading last timestamp...')
     if os.path.exists(TIMESTAMP_FILE):
         with open(TIMESTAMP_FILE, 'r') as f:
-            timestamp_str = f.read().strip()
-            if timestamp_str:
+            if timestamp_str := f.read().strip():
                 return datetime.fromisoformat(timestamp_str)
     return None
 
@@ -63,12 +62,20 @@ async def download_file(url: str):
     """Download files to TEMP_FOLDER."""
     logger.debug(f'Downloading file {url}')
     file_name = os.path.join(TEMP_FOLDER, url.split('/')[-1])
-    async with aiohttp.ClientSession(trust_env=True) as session:
-        async with session.get(url) as response:
-            if response.status == 200:
-                with open(file_name, 'wb') as f:
-                    f.write(await response.read())
-                return file_name
+    try:
+        async with ClientSession(timeout=SESSION_TIMEOUT, trust_env=True) as session:
+            async with session.get(url) as response:
+                if response.status == 200:
+                    with open(file_name, 'wb') as f:
+                        f.write(await response.read())
+                    return file_name
+                else:
+                    logger.error(f'Failed to download {url}, status code: {response.status}')
+    except asyncio.TimeoutError:
+        logger.error(f'Timed out while downloading {url}')
+    except Exception as e:
+        logger.error(f'An error occurred while downloading {url}: {e}')
+    return None
 
 
 async def send_files(bot: Bot, urls: list) -> set:
@@ -80,7 +87,7 @@ async def send_files(bot: Bot, urls: list) -> set:
         media.append(InputMediaPhoto(open(file_path, 'rb')))
     if media:
         await bot.send_media_group(chat_id=CHAT_ID,
-                                   message_thread_id=PHOTO_THREAD_ID,
+                                   # message_thread_id=PHOTO_THREAD_ID,
                                    media=media)
     return set(urls)
 
@@ -97,7 +104,7 @@ def clear_temp_folder() -> None:
 def parse_photos_links() -> set:
     """Parse photos links from category page."""
     logger.debug('Start parsing links...')
-    with requests.Session() as s:
+    with Session() as s:
         cookies = dict(nude='true')
         response = s.get('https://35photo.pro/genre_98/', cookies=cookies)
     soup = BeautifulSoup(response.text, 'html.parser')
@@ -113,28 +120,25 @@ def parse_photos_links() -> set:
 
 # TODO Add checking already running function
 # TODO Add exceptions
-# TODO Add shutdown function for asyncio.sleep
-async def check_photos(update: Update,
-                       context: ContextTypes.DEFAULT_TYPE) -> None:
+async def check_photos(bot: Bot) -> None:
     """Main auto check new photos repeating function."""
     logger.debug('Begin checking photos...')
-    while True:
-        try:
-            last_run_time = load_last_run_time()
-            if (last_run_time is None or
-                    datetime.now() - last_run_time > timedelta(hours=24)):
-                new_links = parse_photos_links()
-                known_links = load_links()
-                new_links = set(new_links) - known_links
-                if new_links:
-                    await send_files(context.bot, list(new_links))
-                    save_links(new_links)
-                    save_last_run_time()
-                    clear_temp_folder()
-                    logger.debug('Finish checking photos')
-                else:
-                    logger.debug('No new links')
+    try:
+        last_run_time = load_last_run_time()
+        if (last_run_time is None or
+                datetime.now() - last_run_time > timedelta(hours=24)):
+            new_links = parse_photos_links()
+            known_links = load_links()
+            if new_links := set(new_links) - known_links:
+                await send_files(bot, list(new_links))
+                save_links(new_links)
+                save_last_run_time()
+                clear_temp_folder()
             else:
-                logger.debug('Skipped checking')
-        finally:
-            await asyncio.sleep(PHOTO_RETRY_PERIOD)
+                logger.debug('No new links')
+        else:
+            logger.debug('Skipped checking')
+    except Exception as e:
+        logger.error(f'An error occurred: {e}')
+    finally:
+        logger.debug('Finish checking photos')

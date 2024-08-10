@@ -18,4 +18,4 @@ async def send_message(bot, message, short_log=False, **kwargs) -> None:
         if not short_log:
             print(f'Bot send message: "{message}"')
         else:
-            print('Bot send message')
+            print('Bot send message.')

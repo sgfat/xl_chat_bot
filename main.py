@@ -1,14 +1,18 @@
 import asyncio
 import os
 import sys
+from asyncio import new_event_loop, set_event_loop
 
+from pytz import utc
 from dotenv import load_dotenv
-from telegram.ext import MessageHandler, filters, Application, CommandHandler
+from telegram.ext import MessageHandler, filters, Application
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from telegram import Bot
 
 from config import logger
 from photos import check_photos
 from movie import random_movie_link
-from utils import send_message
 
 load_dotenv()
 
@@ -30,17 +34,6 @@ def check_tokens() -> bool:
     return True
 
 
-async def start(update, context):
-    await update.message.reply_text('Bot Started!')
-
-
-async def send_startup_message(application: Application) -> None:
-    """Send startup message."""
-    await send_message(application.bot,
-                       f'Bot is ready for work.',
-                       short_log=True)
-
-
 async def handle_words(update, context):
     message = update.message.text
 
@@ -54,19 +47,27 @@ async def handle_words(update, context):
         await random_movie_link(update, context, type_m='tv-series')
 
 
+def run_check_photos(bot: Bot):
+    """Wrapper to run check_photos in an asyncio event loop."""
+    loop = new_event_loop()
+    set_event_loop(loop)
+    loop.run_until_complete(check_photos(bot))
+    loop.close()
+
+
 def main() -> None:
     """Main function."""
     if not check_tokens():
         sys.exit("Program interrupted! Can't find tokens.")
 
     application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("check_photos", check_photos))
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
-    logger.debug('Bot started')
 
-    # loop = asyncio.get_event_loop()
-    # loop.run_until_complete(send_startup_message(application))
+    scheduler = AsyncIOScheduler(timezone=utc)
+    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', minutes=4)
+    scheduler.start()
+
+    logger.debug('Bot started')
 
     application.run_polling()
 
