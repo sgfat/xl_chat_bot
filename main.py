@@ -35,8 +35,8 @@ def check_tokens() -> bool:
 
 
 async def handle_words(update, context):
+    """Listen words from chat."""
     message = update.message.text
-
     if 'ботя' not in message.lower():
         return
     if 'кино' in message.lower():
@@ -64,7 +64,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
 
     scheduler = AsyncIOScheduler(timezone=utc)
-    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', minutes=4)
+    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=13)
     scheduler.start()
 
     logger.debug('Bot started')
