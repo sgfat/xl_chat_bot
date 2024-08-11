@@ -44,6 +44,9 @@ async def handle_words(update, context):
     if 'сериал' in message.lower():
         logger.debug('Random movie link requested')
         await random_movie_link(update, context, type_m='tv-series')
+    if 'аниме' or 'анимэ' in message.lower():
+        logger.debug('Random movie link requested')
+        await random_movie_link(update, context, type_m='anime')
 
 
 def run_check_photos(bot: Bot):
