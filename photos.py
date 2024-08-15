@@ -84,7 +84,9 @@ async def send_files(bot: Bot, urls: list) -> set:
     media = []
     for url in urls:
         file_path = await download_file(url)
-        media.append(InputMediaPhoto(open(file_path, 'rb')))
+        if file_path:
+            media.append(InputMediaPhoto(open(file_path, 'rb')))
+            await asyncio.sleep(2)
     if media:
         await bot.send_media_group(chat_id=CHAT_ID,
                                    message_thread_id=PHOTO_THREAD_ID,
