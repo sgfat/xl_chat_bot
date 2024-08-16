@@ -35,18 +35,21 @@ def check_tokens() -> bool:
 
 async def handle_words(update, context):
     """Listen words from chat."""
-    message = update.message.text
-    if 'ботя' not in message.lower():
+    message = update.message.text.lower().split()
+    if len(message) < 2 or message[0] != 'ботя':
         return
-    if 'кино' in message.lower():
+    request = message[1]
+
+    if 'кино' in request:
         logger.debug('Random movie link requested')
         await random_movie_link(update, context, type_m='movie')
-    if 'сериал' in message.lower():
-        logger.debug('Random movie link requested')
+    elif 'сериал' in request:
+        logger.debug('Random tv-show link requested')
         await random_movie_link(update, context, type_m='tv-series')
-    if 'аниме' or 'анимэ' in message.lower():
-        logger.debug('Random movie link requested')
+    elif 'аниме' in request or 'анимэ' in request:
+        logger.debug('Random anime link requested')
         await random_movie_link(update, context, type_m='anime')
+
 
 
 def run_check_photos(bot: Bot):

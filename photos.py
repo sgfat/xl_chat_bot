@@ -18,7 +18,7 @@ LINKS_FILE = os.getenv('LINKS_FILE')
 TIMESTAMP_FILE = os.getenv('TIMESTAMP_FILE')
 TEMP_FOLDER = os.getenv('TEMP_FOLDER')
 PHOTO_THREAD_ID = os.getenv('PHOTO_THREAD_ID')
-SESSION_TIMEOUT = ClientTimeout(total=60)
+SESSION_TIMEOUT = ClientTimeout(total=180)
 
 if not os.path.exists(TEMP_FOLDER):
     os.makedirs(TEMP_FOLDER)
@@ -86,7 +86,7 @@ async def send_files(bot: Bot, urls: list) -> set:
         file_path = await download_file(url)
         if file_path:
             media.append(InputMediaPhoto(open(file_path, 'rb')))
-            await asyncio.sleep(2)
+            await asyncio.sleep(5)
     if media:
         await bot.send_media_group(chat_id=CHAT_ID,
                                    message_thread_id=PHOTO_THREAD_ID,
@@ -120,7 +120,6 @@ def parse_photos_links() -> set:
     return urls
 
 
-# TODO Add checking already running function
 # TODO Add exceptions
 async def check_photos(bot: Bot) -> None:
     """Main auto check new photos repeating function."""
