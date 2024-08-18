@@ -76,9 +76,8 @@ async def download_file(url: str, retries=3):
             logger.error(f'Timed out while downloading {url} on attempt {attempt + 1}')
         except Exception as e:
             logger.error(f'Error downloading {url} on attempt {attempt + 1}: {e}')
-        await asyncio.sleep(5)
+        await asyncio.sleep(2)
     return None
-
 
 
 async def send_files(bot: Bot, urls: list) -> set:
@@ -89,11 +88,22 @@ async def send_files(bot: Bot, urls: list) -> set:
         file_path = await download_file(url)
         if file_path:
             media.append(InputMediaPhoto(open(file_path, 'rb')))
-            await asyncio.sleep(5)
+            await asyncio.sleep(2)
+
     if media:
-        await bot.send_media_group(chat_id=CHAT_ID,
-                                   message_thread_id=PHOTO_THREAD_ID,
-                                   media=media)
+        try:
+            logger.debug(f"Attempting to send {len(media)} files")
+            await bot.send_media_group(
+                chat_id=CHAT_ID,
+                message_thread_id=PHOTO_THREAD_ID,
+                media=media,
+                connect_timeout=30,
+                pool_timeout=30
+            )
+            logger.debug("Files sent successfully")
+        except Exception as e:
+            logger.error(f"Failed to send media group: {e}")
+            raise
     return set(urls)
 
 
@@ -134,10 +144,9 @@ async def check_photos(bot: Bot) -> None:
             new_links = parse_photos_links()
             known_links = load_links()
             if new_links := new_links - known_links:
-                await send_files(bot, list(new_links))
                 save_links(new_links)
                 save_last_run_time()
-                clear_temp_folder()
+                await send_files(bot, list(new_links))
             else:
                 logger.debug('No new links')
         else:
@@ -145,4 +154,5 @@ async def check_photos(bot: Bot) -> None:
     except Exception as e:
         logger.error(f'An error occurred: {e}')
     finally:
+        clear_temp_folder()
         logger.debug('Finish checking photos')
