@@ -12,6 +12,7 @@ from telegram import Bot
 from config import logger
 from photos import check_photos
 from movie import random_movie_link
+from currency import check_currency_rates
 
 load_dotenv()
 
@@ -49,7 +50,9 @@ async def handle_words(update, context):
     elif 'аниме' in request or 'анимэ' in request:
         logger.debug('Random anime link requested')
         await random_movie_link(update, context, type_m='anime')
-
+    elif 'курс' in request:
+        logger.debug('Currency rates requested')
+        await check_currency_rates(update, context)
 
 
 def run_check_photos(bot: Bot):

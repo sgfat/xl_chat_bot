@@ -27,8 +27,9 @@ async def check_currency_rates(update, context) -> None:
         currencies = await request_api(CUR_API_URL_2)
         logger.debug('Sending reply with currencies')
         await update.message.reply_text(
+            '1 USD =\n' +  # Добавляем строку в начало
             '\n'.join(
-                f'{currencies[cur]["name"]}: {float(rate):,.2f}'.replace(',', ' ')
+                f'{float(rate):,.2f} {currencies[cur]["code"]}'.replace(',', ' ')
                 for cur, rate in rates.items()
             )
         )
