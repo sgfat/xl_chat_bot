@@ -97,8 +97,8 @@ async def send_files(bot: Bot, urls: list) -> set:
                 chat_id=CHAT_ID,
                 message_thread_id=PHOTO_THREAD_ID,
                 media=media,
-                connect_timeout=30,
-                pool_timeout=30
+                connect_timeout=100,
+                pool_timeout=100
             )
             logger.debug("Files sent successfully")
         except Exception as e:
