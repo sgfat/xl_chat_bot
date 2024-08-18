@@ -16,12 +16,10 @@ X_API_KEY = os.getenv('X_API_KEY')
 async def random_movie_link(update, context, type_m):
     genre_mapping = {1: "Фильм", 2: "Сериал", 3: "Мультфильм",
                      4: "Аниме", 5: "Мультсериал", 6: "ТВ-Шоу"}
-    logger.debug(f'Random {type_m} link requested.')
     try:
         async with ClientSession() as session:
             headers = {'X-API-KEY': X_API_KEY}
             url = f'{X_API_URL}{type_m}'
-            logger.debug('1')
             async with session.get(url, headers=headers) as response:
                 response.raise_for_status()
                 data = await response.json()
@@ -29,13 +27,11 @@ async def random_movie_link(update, context, type_m):
                 poster = data['poster']['url']
                 poster_path = await download_poster(poster)
                 videos = data.get('videos', {})
-                trailers = videos.get('trailers', [])
-                if trailers:
+                if trailers := videos.get('trailers', []):
                     trailer_urls = '\n'.join(x.get('url', '')
                                              for x in trailers if x.get('url'))
                 else:
                     trailer_urls = None
-                logger.debug('2')
                 await update.message.reply_photo(
                     photo=open(poster_path, 'rb'),
                     caption=f'{genre_mapping[data["typeNumber"]]}: '
@@ -47,10 +43,8 @@ async def random_movie_link(update, context, type_m):
                             f'{"Нет описания" if description is None else description}\n\n'
                             f'Трейлеры:\n{"Нет трейлеров" if trailer_urls is None else trailer_urls}'
                 )
-
-                logger.debug('Random movie link created')
+                logger.debug(f'Random {type_m} link created')
     except Exception as e:
-        print(f'An error occurred: {e}')
         logger.debug(f'An error occurred: {e}')
     finally:
         if 'poster_path' in locals():

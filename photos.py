@@ -18,7 +18,7 @@ LINKS_FILE = os.getenv('LINKS_FILE')
 TIMESTAMP_FILE = os.getenv('TIMESTAMP_FILE')
 TEMP_FOLDER = os.getenv('TEMP_FOLDER')
 PHOTO_THREAD_ID = os.getenv('PHOTO_THREAD_ID')
-SESSION_TIMEOUT = ClientTimeout(total=60)
+SESSION_TIMEOUT = ClientTimeout(total=180)
 
 if not os.path.exists(TEMP_FOLDER):
     os.makedirs(TEMP_FOLDER)
@@ -58,23 +58,25 @@ def save_last_run_time() -> None:
         logger.debug('Timestamp saved')
 
 
-async def download_file(url: str):
-    """Download files to TEMP_FOLDER."""
-    logger.debug(f'Downloading file {url}')
-    file_name = os.path.join(TEMP_FOLDER, url.split('/')[-1])
-    try:
-        async with ClientSession(timeout=SESSION_TIMEOUT, trust_env=True) as session:
-            async with session.get(url) as response:
-                if response.status == 200:
-                    with open(file_name, 'wb') as f:
-                        f.write(await response.read())
-                    return file_name
-                else:
-                    logger.error(f'Failed to download {url}, status code: {response.status}')
-    except asyncio.TimeoutError:
-        logger.error(f'Timed out while downloading {url}')
-    except Exception as e:
-        logger.error(f'An error occurred while downloading {url}: {e}')
+async def download_file(url: str, retries=3):
+    """Download files to TEMP_FOLDER with retries."""
+    for attempt in range(retries):
+        logger.debug(f'Attempt {attempt + 1} to download {url}')
+        try:
+            async with ClientSession(timeout=SESSION_TIMEOUT, trust_env=True) as session:
+                async with session.get(url) as response:
+                    if response.status == 200:
+                        file_name = os.path.join(TEMP_FOLDER, url.split('/')[-1])
+                        with open(file_name, 'wb') as f:
+                            f.write(await response.read())
+                        return file_name
+                    else:
+                        logger.error(f'Failed to download {url}, status code: {response.status}')
+        except asyncio.TimeoutError:
+            logger.error(f'Timed out while downloading {url} on attempt {attempt + 1}')
+        except Exception as e:
+            logger.error(f'Error downloading {url} on attempt {attempt + 1}: {e}')
+        await asyncio.sleep(2)
     return None
 
 
@@ -87,10 +89,21 @@ async def send_files(bot: Bot, urls: list) -> set:
         if file_path:
             media.append(InputMediaPhoto(open(file_path, 'rb')))
             await asyncio.sleep(2)
+
     if media:
-        await bot.send_media_group(chat_id=CHAT_ID,
-                                   message_thread_id=PHOTO_THREAD_ID,
-                                   media=media)
+        try:
+            logger.debug(f"Attempting to send {len(media)} files")
+            await bot.send_media_group(
+                chat_id=CHAT_ID,
+                message_thread_id=PHOTO_THREAD_ID,
+                media=media,
+                connect_timeout=30,
+                pool_timeout=30
+            )
+            logger.debug("Files sent successfully")
+        except Exception as e:
+            logger.error(f"Failed to send media group: {e}")
+            raise
     return set(urls)
 
 
@@ -120,7 +133,6 @@ def parse_photos_links() -> set:
     return urls
 
 
-# TODO Add checking already running function
 # TODO Add exceptions
 async def check_photos(bot: Bot) -> None:
     """Main auto check new photos repeating function."""
@@ -131,11 +143,10 @@ async def check_photos(bot: Bot) -> None:
                 datetime.now() - last_run_time > timedelta(hours=24)):
             new_links = parse_photos_links()
             known_links = load_links()
-            if new_links := set(new_links) - known_links:
-                await send_files(bot, list(new_links))
+            if new_links := new_links - known_links:
                 save_links(new_links)
                 save_last_run_time()
-                clear_temp_folder()
+                await send_files(bot, list(new_links))
             else:
                 logger.debug('No new links')
         else:
@@ -143,4 +154,5 @@ async def check_photos(bot: Bot) -> None:
     except Exception as e:
         logger.error(f'An error occurred: {e}')
     finally:
+        clear_temp_folder()
         logger.debug('Finish checking photos')
