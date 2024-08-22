@@ -10,7 +10,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from telegram import Bot
 
 from config import logger
-from photos import check_photos
+from photos import check_bravo_photos
 from movie import random_movie_link
 
 load_dotenv()
@@ -56,7 +56,7 @@ def run_check_photos(bot: Bot):
     """Wrapper to run check_photos in an asyncio event loop."""
     loop = new_event_loop()
     set_event_loop(loop)
-    loop.run_until_complete(check_photos(bot))
+    loop.run_until_complete(check_bravo_photos(bot))
     loop.close()
 
 
@@ -69,7 +69,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
 
     scheduler = AsyncIOScheduler(timezone=utc)
-    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=13)
+    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=12)
     scheduler.start()
 
     logger.debug('Bot started')
