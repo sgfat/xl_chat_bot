@@ -1,6 +1,8 @@
+import asyncio
 import os
 import json
 import re
+from sqlite3 import connect
 
 from aiohttp import ClientTimeout
 from bs4 import BeautifulSoup
@@ -62,7 +64,8 @@ async def send_files(bot: Bot, urls: list, caption=None) -> set:
                 chat_id=CHAT_ID,
                 message_thread_id=PHOTO_THREAD_ID,
                 media=media,
-                pool_timeout=60
+                pool_timeout=120,
+                connect_timeout=120
             )
             logger.debug(f"{len(urls)} files sent successfully")
         except Exception as e:
@@ -150,5 +153,6 @@ async def check_bravo_photos(bot: Bot) -> None:
             await send_files(bot, media, caption)
         else:
             logger.debug('No new links')
+        await asyncio.sleep(5)
 
     save_links('bravo_posts', known_posts)

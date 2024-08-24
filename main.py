@@ -69,7 +69,7 @@ def main() -> None:
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
 
     scheduler = AsyncIOScheduler(timezone=utc)
-    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=12)
+    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=5)
     scheduler.start()
 
     logger.debug('Bot started')
