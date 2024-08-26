@@ -12,7 +12,7 @@ from telegram import Bot
 from config import logger
 from photos import check_bravo_photos
 from movie import random_movie_link
-from gpt import ask_chatgpt
+from currency import check_currency_rates
 
 load_dotenv()
 
@@ -53,6 +53,9 @@ async def handle_words(update, context):
     elif 'вопрос' in request:
         logger.debug('GPT request')
         await ask_chatgpt(update, context)
+    elif 'курс' in request:
+        logger.debug('Currency rates requested')
+        await check_currency_rates(update, context)
 
 
 def run_check_photos(bot: Bot):
@@ -82,6 +85,7 @@ def main() -> None:
     scheduler.start()
 
     logger.debug('Bot started')
+
     application.run_polling()
 
 
