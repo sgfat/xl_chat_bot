@@ -65,7 +65,7 @@ def main() -> None:
     if not check_tokens():
         sys.exit("Program interrupted! Can't find tokens.")
 
-    application = Application.builder().token(TOKEN).build()
+    application = Application.builder().token(TOKEN).connection_pool_size(10).build()
     application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
 
     scheduler = AsyncIOScheduler(timezone=utc)
