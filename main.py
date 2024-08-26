@@ -13,6 +13,7 @@ from config import logger
 from photos import check_bravo_photos
 from movie import random_movie_link
 from currency import check_currency_rates
+from gpt import ask_chatgpt
 
 load_dotenv()
 

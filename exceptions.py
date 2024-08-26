@@ -8,6 +8,11 @@ class BotSendMessageError(Exception):
     pass
 
 
+class BotSendFilesError(Exception):
+    """Error with sending files through bot"""
+    pass
+
+
 class JSONError(Exception):
     """Error with JSON"""
     pass
