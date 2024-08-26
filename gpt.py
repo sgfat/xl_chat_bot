@@ -30,8 +30,8 @@ async def ask_chatgpt(update: Update,
 
     response = requests.post(url, json=data, headers=headers)
     response_json = response.json()
-    print(response_json)
     reply = response_json['choices'][0]['message']['content']
+
     try:
         await update.message.reply_text(reply, parse_mode=ParseMode.MARKDOWN)
     except Exception as e:
