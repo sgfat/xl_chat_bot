@@ -11,6 +11,10 @@ LOG_DEBUG_FORMAT = '%(asctime)s, %(levelname)s, %(filename)s: %(lineno)d - %(mes
 # Log file name
 LOG_DEBUG_FILE = 'debug.log'
 
+GPT_CONTENT = ('Отвечай по существу, не слишком длинно. '
+               'Все ответы должны быть на русском языке. '
+               'Форматирование текста подходящее для мессенджера Telegram.')
+
 # Logging settings
 logger = logging.getLogger('debug')
 logger.setLevel(logging.DEBUG)

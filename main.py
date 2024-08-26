@@ -12,6 +12,7 @@ from telegram import Bot
 from config import logger
 from photos import check_bravo_photos
 from movie import random_movie_link
+from gpt import ask_chatgpt
 
 load_dotenv()
 
@@ -49,7 +50,9 @@ async def handle_words(update, context):
     elif 'аниме' in request or 'анимэ' in request:
         logger.debug('Random anime link requested')
         await random_movie_link(update, context, type_m='anime')
-
+    elif 'вопрос' in request:
+        logger.debug('GPT request')
+        await ask_chatgpt(update, context)
 
 
 def run_check_photos(bot: Bot):
@@ -65,15 +68,20 @@ def main() -> None:
     if not check_tokens():
         sys.exit("Program interrupted! Can't find tokens.")
 
-    application = Application.builder().token(TOKEN).connection_pool_size(10).build()
-    application.add_handler(MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words))
+    application = (
+        Application.builder().token(TOKEN).connection_pool_size(10).build()
+    )
+    application.add_handler(
+        MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words)
+    )
 
     scheduler = AsyncIOScheduler(timezone=utc)
-    scheduler.add_job(lambda: run_check_photos(application.bot), trigger='interval', hours=5)
+    scheduler.add_job(
+        lambda: run_check_photos(application.bot), trigger='interval', hours=5
+    )
     scheduler.start()
 
     logger.debug('Bot started')
-
     application.run_polling()
 
 
