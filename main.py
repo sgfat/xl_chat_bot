@@ -82,7 +82,7 @@ def main() -> None:
     scheduler = AsyncIOScheduler(timezone=utc)
     scheduler.add_job(
         lambda: run_check_photos(application.bot),
-        trigger='interval', minutes=1,
+        trigger='interval', hours=5,
         max_instances=2
     )
     scheduler.start()
