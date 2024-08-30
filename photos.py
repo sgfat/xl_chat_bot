@@ -66,7 +66,7 @@ async def send_files(bot: Bot, urls: list, caption=None) -> set:
                 await bot.send_media_group(
                     caption=caption,
                     chat_id=CHAT_ID,
-                    # message_thread_id=PHOTO_THREAD_ID,
+                    message_thread_id=PHOTO_THREAD_ID,
                     media=media,
                     pool_timeout=120,
                     connect_timeout=120
