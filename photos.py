@@ -26,6 +26,8 @@ VK_GROUP_ID = os.getenv('VK_GROUP_ID')
 if not os.path.exists(TEMP_FOLDER):
     os.makedirs(TEMP_FOLDER)
 
+retries = 3
+initial_sleep_time = 5
 
 def load_links(key: str) -> set:
     """Load last links from LINKS_FILE under a specific key."""
@@ -52,24 +54,33 @@ def save_links(key: str, links: set) -> None:
 
 
 async def send_files(bot: Bot, urls: list, caption=None) -> set:
-    """Send all files to chat."""
+    """Send all files to chat with retries."""
     logger.debug('Sending files...')
     media = []
     media.extend(InputMediaPhoto(media=url) for url in urls)
+
     if media:
-        try:
-            logger.debug(f"Attempting to send {len(media)} files with caption: {caption}")
-            await bot.send_media_group(
-                caption=caption,
-                chat_id=CHAT_ID,
-                message_thread_id=PHOTO_THREAD_ID,
-                media=media,
-                pool_timeout=120,
-                connect_timeout=120
-            )
-            logger.debug(f"{len(urls)} files sent successfully")
-        except Exception as e:
-            logger.error(f"Failed to send media group: {e}")
+        for attempt in range(retries):
+            try:
+                logger.debug(f"Attempting to send {len(media)} files with caption: {caption}")
+                await bot.send_media_group(
+                    caption=caption,
+                    chat_id=CHAT_ID,
+                    # message_thread_id=PHOTO_THREAD_ID,
+                    media=media,
+                    pool_timeout=120,
+                    connect_timeout=120
+                )
+                logger.debug(f"{len(urls)} files sent successfully")
+                break
+            except Exception as e:
+                if attempt == retries - 1:
+                    logger.error(f"Failed to send media group after {retries} attempts: {e}")
+                else:
+                    sleep_time = initial_sleep_time * (2 ** attempt)
+                    logger.debug(f"Retrying in {sleep_time} seconds...")
+                    await asyncio.sleep(sleep_time)
+
     return set(urls)
 
 

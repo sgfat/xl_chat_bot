@@ -73,7 +73,7 @@ def main() -> None:
         sys.exit("Program interrupted! Can't find tokens.")
 
     application = (
-        Application.builder().token(TOKEN).connection_pool_size(10).build()
+        Application.builder().token(TOKEN).build()
     )
     application.add_handler(
         MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words)
@@ -81,7 +81,9 @@ def main() -> None:
 
     scheduler = AsyncIOScheduler(timezone=utc)
     scheduler.add_job(
-        lambda: run_check_photos(application.bot), trigger='interval', hours=5
+        lambda: run_check_photos(application.bot),
+        trigger='interval', minutes=1,
+        max_instances=2
     )
     scheduler.start()
 
