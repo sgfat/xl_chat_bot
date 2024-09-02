@@ -1,8 +1,7 @@
 import os
-
 from aiohttp import ClientSession
-from config import logger
 from dotenv import load_dotenv
+from config import logger
 
 load_dotenv()
 
@@ -20,20 +19,20 @@ async def request_api(url) -> dict:
     return data['data']
 
 
-async def check_currency_rates(update, context) -> None:
+async def check_currency_rates(client, event) -> None:
     try:
         logger.debug('Sending requests to currencies API')
         rates = await request_api(CUR_API_URL_1)
         currencies = await request_api(CUR_API_URL_2)
+
         logger.debug('Sending reply with currencies')
-        await update.message.reply_text(
-            '1 USD =\n' +  # Добавляем строку в начало
-            '\n'.join(
-                f'{float(rate):,.2f} {currencies[cur]["code"]}'.replace(',', ' ')
-                for cur, rate in rates.items()
-            )
+        message_text = '1 USD =\n' + '\n'.join(
+            f'{float(rate):,.2f} {currencies[cur]["code"]}'.replace(',', ' ')
+            for cur, rate in rates.items()
         )
+        await client.send_message(event.chat_id, message_text)
+
     except Exception as e:
-        logger.debug(f'An error occurred: {e}')
+        logger.error(f'An error occurred: {e}')
     finally:
         logger.debug('Currency rates request finished')

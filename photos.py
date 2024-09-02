@@ -2,23 +2,20 @@ import asyncio
 import os
 import json
 import re
-from sqlite3 import connect
 
-from aiohttp import ClientTimeout
-from bs4 import BeautifulSoup
 from dotenv import load_dotenv
-from requests import Session
-from telegram import Bot, InputMediaPhoto
-
+from aiohttp import ClientSession
+from telethon import TelegramClient
+from telethon.tl.types import InputMediaPhotoExternal
 from config import logger
 
 load_dotenv()
 
-CHAT_ID = os.getenv('CHAT_ID')
+CHAT_ID = int(os.getenv('CHAT_ID'))
 LINKS_FILE = os.getenv('LINKS_FILE')
 TIMESTAMP_FILE = os.getenv('TIMESTAMP_FILE')
 TEMP_FOLDER = os.getenv('TEMP_FOLDER')
-PHOTO_THREAD_ID = os.getenv('PHOTO_THREAD_ID')
+PHOTO_THREAD_ID = int(os.getenv('PHOTO_THREAD_ID'))
 VK_API_URL = os.getenv('VK_API_URL')
 VK_API_TOKEN = os.getenv('VK_API_TOKEN')
 VK_GROUP_ID = os.getenv('VK_GROUP_ID')
@@ -28,6 +25,7 @@ if not os.path.exists(TEMP_FOLDER):
 
 retries = 3
 initial_sleep_time = 5
+
 
 def load_links(key: str) -> set:
     """Load last links from LINKS_FILE under a specific key."""
@@ -53,23 +51,19 @@ def save_links(key: str, links: set) -> None:
         logger.debug(f'Last links saved for {key}')
 
 
-async def send_files(bot: Bot, urls: list, caption=None) -> set:
+async def send_files(client: TelegramClient, urls: list, caption=None) -> set:
     """Send all files to chat with retries."""
     logger.debug('Sending files...')
-    media = []
-    media.extend(InputMediaPhoto(media=url) for url in urls)
 
-    if media:
+    if urls:
         for attempt in range(retries):
             try:
-                logger.debug(f"Attempting to send {len(media)} files with caption: {caption}")
-                await bot.send_media_group(
-                    caption=caption,
-                    chat_id=CHAT_ID,
-                    message_thread_id=PHOTO_THREAD_ID,
-                    media=media,
-                    pool_timeout=120,
-                    connect_timeout=120
+                logger.debug(f"Attempting to send {len(urls)} files with caption: {caption}")
+                await client.send_message(
+                    CHAT_ID,
+                    file=urls,
+                    message=caption,
+                    reply_to=PHOTO_THREAD_ID
                 )
                 logger.debug(f"{len(urls)} files sent successfully")
                 break
@@ -84,64 +78,30 @@ async def send_files(bot: Bot, urls: list, caption=None) -> set:
     return set(urls)
 
 
-def parse_photos_links() -> set:
-    """Parse photos links from category page."""
-    logger.debug('Start parsing links...')
-    with Session() as s:
-        cookies = dict(nude='true')
-        response = s.get('https://35photo.pro/genre_98/', cookies=cookies)
-    soup = BeautifulSoup(response.text, 'html.parser')
-    urls = set()
-    for a in soup.find_all('a', href=True):
-        if 'href-mobile' in a.attrs:
-            urls.add(a['href-mobile'])
-            if len(urls) == 10:
-                break
-    logger.debug('Links parsed')
-    return urls
-
-
-async def check_35_photos(bot: Bot) -> None:
-    """Main auto check new photos repeating function."""
-    logger.debug('Begin checking 35photo photos...')
-    try:
-        new_links = parse_photos_links()
-        known_links = load_links('35_photo_links')
-        if new_links := new_links - known_links:
-            save_links('35_photo_links', new_links)
-            await send_files(bot, list(new_links), '35photo.ru')
-        else:
-            logger.debug('No new links')
-    except Exception as e:
-        logger.error(f'An error occurred: {e}')
-    finally:
-        logger.debug('Finish checking photos')
-
-
-def vk_api_request() -> dict:
+async def vk_api_request() -> dict:
     """Request to VK API."""
     logger.debug("Sending request to VK API...")
     try:
-        with Session() as s:
+        async with ClientSession() as session:
             params = {'access_token': VK_API_TOKEN,
                       'v': '5.199',
                       'owner_id': VK_GROUP_ID,
                       'count': '10'}
-            response = s.get(VK_API_URL, params=params)
-            response.raise_for_status()
-            data = response.json()
-            logger.debug("VK API request successful")
-            return data['response']['items']
+            async with session.get(VK_API_URL, params=params) as response:
+                response.raise_for_status()
+                data = await response.json()
+                logger.debug("VK API request successful")
+                return data['response']['items']
     except Exception as e:
         logger.error(f"Error during VK API request: {e}")
         return {}
 
 
-async def check_bravo_photos(bot: Bot) -> None:
+async def check_bravo_photos(client: TelegramClient) -> None:
     """Check photos from Bravo VK group."""
     logger.debug('Begin checking Bravo photos')
     known_posts = load_links('bravo_posts')
-    data = vk_api_request()
+    data = await vk_api_request()
     for post in data:
         if post['id'] in known_posts:
             continue
@@ -161,7 +121,7 @@ async def check_bravo_photos(bot: Bot) -> None:
                 r'\[(club|id)\d+\|([^\]]+)\]', r'\2', text
             )
             caption = result or None
-            await send_files(bot, media, caption)
+            await send_files(client, media, caption)
         else:
             logger.debug('No new links')
         await asyncio.sleep(5)

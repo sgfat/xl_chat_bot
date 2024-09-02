@@ -1,13 +1,11 @@
 import os
-import sys
-from asyncio import new_event_loop, set_event_loop
 
-from pytz import utc
-from dotenv import load_dotenv
-from telegram.ext import MessageHandler, filters, Application
+from aiogram.loggers import event
+from telethon import TelegramClient, events
+from telethon.tl.custom import Button
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
-
-from telegram import Bot
+from dotenv import load_dotenv
+from pytz import utc
 
 from config import logger
 from photos import check_bravo_photos
@@ -17,79 +15,52 @@ from gpt import ask_chatgpt
 
 load_dotenv()
 
-TOKEN = os.getenv('TOKEN')
+API_ID = int(os.getenv('API_ID'))
+API_HASH = os.getenv('API_HASH')
+BOT_TOKEN = os.getenv('TOKEN')
+
+client = TelegramClient('bot_session', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 
-# TODO Change check_tokens function
-def check_tokens() -> bool:
-    """Checking tokens."""
-    logger.debug('Checking tokens')
-    tokens = {
-        'TOKEN': TOKEN,
-    }
-    for token, token_value in tokens.items():
-        if token_value is None:
-            logger.critical(f"Can't find token:{token}")
-            return False
-    logger.debug('All tokens OK')
-    return True
-
-
-async def handle_words(update, context):
+@client.on(events.NewMessage(pattern=r'^ботя\s+(\w+)'))
+async def handle_words(event):
     """Listen words from chat."""
-    message = update.message.text.lower().split()
-    if len(message) < 2 or message[0] != 'ботя':
-        return
-    request = message[1]
+    request = event.pattern_match.group(1).lower()
 
     if 'кино' in request:
         logger.debug('Random movie link requested')
-        await random_movie_link(update, context, type_m='movie')
+        await random_movie_link(client, event, type_m='movie')
     elif 'сериал' in request:
         logger.debug('Random tv-show link requested')
-        await random_movie_link(update, context, type_m='tv-series')
+        await random_movie_link(client, event, type_m='tv-series')
     elif 'аниме' in request or 'анимэ' in request:
         logger.debug('Random anime link requested')
-        await random_movie_link(update, context, type_m='anime')
+        await random_movie_link(client, event, type_m='anime')
     elif 'вопрос' in request:
         logger.debug('GPT request')
-        await ask_chatgpt(update, context)
+        await ask_chatgpt(client, event)
     elif 'курс' in request:
         logger.debug('Currency rates requested')
-        await check_currency_rates(update, context)
+        await check_currency_rates(client, event)
 
 
-def run_check_photos(bot: Bot):
-    """Wrapper to run check_photos in an asyncio event loop."""
-    loop = new_event_loop()
-    set_event_loop(loop)
-    loop.run_until_complete(check_bravo_photos(bot))
-    loop.close()
+async def run_check_photos():
+    """Wrapper to run check_photos periodically."""
+    await check_bravo_photos(client)
 
 
-def main() -> None:
+def main():
     """Main function."""
-    if not check_tokens():
-        sys.exit("Program interrupted! Can't find tokens.")
-
-    application = (
-        Application.builder().token(TOKEN).build()
-    )
-    application.add_handler(
-        MessageHandler(filters.TEXT & (~filters.COMMAND), handle_words)
-    )
-
     scheduler = AsyncIOScheduler(timezone=utc)
     scheduler.add_job(
-        lambda: run_check_photos(application.bot),
-        trigger='interval', hours=5,
+        run_check_photos,
+        trigger='interval', hours=2,
         max_instances=2
     )
     scheduler.start()
 
     logger.debug('Bot started')
-
-    application.run_polling()
+    client.run_until_disconnected()
 
 
 if __name__ == '__main__':
