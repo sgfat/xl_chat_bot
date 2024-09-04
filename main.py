@@ -1,6 +1,5 @@
 import os
 
-from aiogram.loggers import event
 from telethon import TelegramClient, events
 from telethon.tl.custom import Button
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
