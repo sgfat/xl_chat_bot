@@ -56,6 +56,10 @@ async def random_movie_link(client, event, type_m):
                     f'Трейлеры:\n{trailer_urls or "Нет трейлеров"}'
                 )
 
+                if len(caption) > 1024:
+                    caption = f'{caption[:1021]}...'
+                    logger.warning("Caption too long, cut to 1024 symbols")
+
                 await client.send_file(
                     event.chat_id,
                     file=poster_path,
