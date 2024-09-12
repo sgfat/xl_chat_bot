@@ -3,10 +3,10 @@ import os
 import json
 import re
 
+from bs4 import BeautifulSoup
 from dotenv import load_dotenv
 from aiohttp import ClientSession
 from telethon import TelegramClient
-from telethon.tl.types import InputMediaPhotoExternal
 from config import logger
 
 load_dotenv()
@@ -76,6 +76,47 @@ async def send_files(client: TelegramClient, urls: list, caption=None) -> set:
                     await asyncio.sleep(sleep_time)
 
     return set(urls)
+
+
+async def parse_photos_links() -> set:
+    """Parse photos links from category page."""
+    logger.debug('Start parsing links...')
+    async with ClientSession() as session:
+        cookies = dict(nude='true')
+        async with session.get(
+                'https://35photo.pro/genre_98/', cookies=cookies) as response:
+            response.raise_for_status()
+            html = await response.text()
+
+    soup = BeautifulSoup(html, 'html.parser')
+    print(soup)
+    urls = set()
+    for a in soup.find_all('a', href=True):
+        if 'href-mobile' in a.attrs:
+            urls.add(a['href-mobile'])
+            if len(urls) == 10:
+                break
+    logger.debug('Links parsed')
+    return urls
+
+
+async def check_35_photos(client: TelegramClient) -> None:
+    """Main auto check new photos repeating function."""
+    logger.debug('Begin checking 35photo photos...')
+    try:
+        new_links = await parse_photos_links()
+        print(new_links)
+        known_links = load_links('35_photo_links')
+        print(known_links)
+        if new_links := new_links - known_links:
+            save_links('35_photo_links', new_links)
+            await send_files(client, list(new_links), '35photo.ru')
+        else:
+            logger.debug('No new links')
+    except Exception as e:
+        logger.error(f'An error occurred: {e}')
+    finally:
+        logger.debug('Finish checking photos')
 
 
 async def vk_api_request() -> dict:

@@ -3,7 +3,8 @@ import sys
 
 from logging.handlers import RotatingFileHandler
 
-PHOTO_RETRY_PERIOD = 60 * 60 * 13
+# Photo checking period in hours
+PHOTO_CHECK_PERIOD = 5
 
 # Log format
 LOG_DEBUG_FORMAT = '%(asctime)s, %(levelname)s, %(filename)s: %(lineno)d - %(message)s'

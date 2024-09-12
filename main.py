@@ -1,13 +1,12 @@
 import os
 
 from telethon import TelegramClient, events
-from telethon.tl.custom import Button
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from dotenv import load_dotenv
 from pytz import utc
 
-from config import logger
-from photos import check_bravo_photos
+from config import logger, PHOTO_CHECK_PERIOD
+from photos import check_bravo_photos, check_35_photos
 from movie import random_movie_link
 from currency import check_currency_rates
 from gpt import ask_chatgpt
@@ -46,6 +45,7 @@ async def handle_words(event):
 async def run_check_photos():
     """Wrapper to run check_photos periodically."""
     await check_bravo_photos(client)
+    await check_35_photos(client)
 
 
 def main():
@@ -53,7 +53,7 @@ def main():
     scheduler = AsyncIOScheduler(timezone=utc)
     scheduler.add_job(
         run_check_photos,
-        trigger='interval', hours=2,
+        trigger='interval', hours=PHOTO_CHECK_PERIOD,
         max_instances=2
     )
     scheduler.start()
