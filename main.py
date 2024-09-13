@@ -53,7 +53,8 @@ def main():
     scheduler = AsyncIOScheduler(timezone=utc)
     scheduler.add_job(
         run_check_photos,
-        trigger='interval', hours=PHOTO_CHECK_PERIOD,
+        trigger='interval',
+        hours=PHOTO_CHECK_PERIOD,
         max_instances=2
     )
     scheduler.start()
